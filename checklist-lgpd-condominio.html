@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inspeção LGPD — Condomínios</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --green: #1D9E75;
+    --green-light: #EAF3DE;
+    --green-dark: #3B6D11;
+    --red: #E24B4A;
+    --red-light: #FCEBEB;
+    --red-dark: #A32D2D;
+    --gray: #888780;
+    --gray-light: #F1EFE8;
+    --blue: #185FA5;
+    --blue-light: #E6F1FB;
+    --text: #1a1a18;
+    --text-muted: #666660;
+    --text-hint: #999993;
+    --border: rgba(0,0,0,0.1);
+    --border-strong: rgba(0,0,0,0.18);
+    --bg: #FAF9F6;
+    --surface: #fff;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 1.25rem 1.5rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .header-left { display: flex; flex-direction: column; gap: 2px; }
+  .header-title { font-size: 15px; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+  .header-sub { font-size: 12px; color: var(--text-hint); font-family: 'DM Mono', monospace; }
+
+  .progress-wrap { display: flex; align-items: center; gap: 10px; }
+  .progress-bar { width: 140px; height: 5px; background: var(--gray-light); border-radius: 99px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--green); border-radius: 99px; transition: width .4s ease; width: 0%; }
+  .progress-label { font-size: 13px; font-weight: 500; color: var(--text-muted); font-family: 'DM Mono', monospace; min-width: 36px; }
+
+  main { max-width: 680px; margin: 0 auto; padding: 1.5rem 1rem 6rem; }
+
+  .summary-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 1.5rem;
+  }
+
+  .scard {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: .875rem 1rem;
+    text-align: center;
+  }
+
+  .scard-n { font-size: 26px; font-weight: 600; font-family: 'DM Mono', monospace; line-height: 1; }
+  .scard-l { font-size: 11px; color: var(--text-hint); margin-top: 4px; font-weight: 500; text-transform: uppercase; letter-spacing: .04em; }
+  .n-ok { color: var(--green-dark); }
+  .n-nok { color: var(--red-dark); }
+  .n-na { color: var(--gray); }
+
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: .75rem;
+    overflow: hidden;
+    transition: box-shadow .2s;
+  }
+
+  .section:has(.items.open) { box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+
+  .sec-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: .9rem 1.1rem;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .sec-head:hover { background: var(--bg); }
+  .sec-head:active { background: var(--gray-light); }
+
+  .sec-icon { font-size: 18px; width: 30px; text-align: center; flex-shrink: 0; }
+  .sec-label { font-size: 14px; font-weight: 500; color: var(--text); flex: 1; }
+  .sec-count {
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    color: var(--text-hint);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 99px;
+    padding: 2px 8px;
+    margin-right: 4px;
+    white-space: nowrap;
+  }
+
+  .sec-mini-bar { width: 40px; height: 3px; background: var(--gray-light); border-radius: 99px; overflow: hidden; margin-right: 2px; }
+  .sec-mini-fill { height: 100%; background: var(--green); border-radius: 99px; transition: width .4s; }
+
+  .chev {
+    font-size: 10px;
+    color: var(--text-hint);
+    transition: transform .25s;
+    flex-shrink: 0;
+  }
+  .chev.open { transform: rotate(90deg); }
+
+  .items { display: none; border-top: 1px solid var(--border); }
+  .items.open { display: block; }
+
+  .item {
+    padding: .75rem 1.1rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+  }
+  .item:last-child { border-bottom: none; }
+
+  .item-label { font-size: 13.5px; color: var(--text); line-height: 1.5; font-weight: 500; }
+  .item-label.done { color: var(--text-hint); font-weight: 400; }
+
+  .item-hint {
+    font-size: 12px;
+    color: var(--text-hint);
+    line-height: 1.5;
+    padding-left: .75rem;
+    border-left: 2px solid var(--border);
+  }
+
+  .opts { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  .opt {
+    border: 1px solid var(--border-strong);
+    background: transparent;
+    border-radius: 99px;
+    padding: 5px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all .15s;
+    font-family: 'DM Sans', sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .opt:hover { background: var(--bg); border-color: var(--text-hint); }
+  .opt:active { transform: scale(.97); }
+
+  .opt.ok { background: var(--green-light); border-color: var(--green); color: var(--green-dark); }
+  .opt.nok { background: var(--red-light); border-color: var(--red); color: var(--red-dark); }
+  .opt.na { background: var(--gray-light); border-color: var(--gray); color: var(--gray); }
+
+  .obs-btn {
+    font-size: 11px;
+    color: var(--blue);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    font-family: 'DM Sans', sans-serif;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    display: none;
+  }
+
+  .obs-input {
+    display: none;
+    width: 100%;
+    font-size: 12.5px;
+    padding: 7px 10px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    color: var(--text);
+    resize: vertical;
+    font-family: 'DM Sans', sans-serif;
+    line-height: 1.5;
+    margin-top: 2px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .obs-input:focus { border-color: var(--blue); }
+  .obs-input.show { display: block; }
+
+  .sticky-footer {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: rgba(250,249,246,0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border);
+    padding: .875rem 1rem;
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    transition: all .15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn:hover { background: var(--bg); }
+  .btn:active { transform: scale(.97); }
+
+  .btn-primary {
+    background: var(--text);
+    color: var(--surface);
+    border-color: var(--text);
+  }
+  .btn-primary:hover { background: #333; }
+
+  .btn-danger {
+    color: var(--red-dark);
+    border-color: var(--border-strong);
+  }
+
+  .report-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 200;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .report-modal.open { display: flex; }
+
+  .report-box {
+    background: var(--surface);
+    border-radius: var(--radius) var(--radius) 0 0;
+    width: 100%;
+    max-width: 680px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .report-head {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .report-head-title { font-size: 15px; font-weight: 600; }
+  .report-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-hint); line-height: 1; padding: 0 4px; }
+
+  .report-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.25rem;
+  }
+
+  .report-body pre {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .report-foot {
+    padding: 1rem 1.25rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+  }
+
+  @media (max-width: 480px) {
+    .progress-bar { width: 100px; }
+    .summary-cards { gap: 6px; }
+    .scard-n { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="header-title">Inspeção LGPD — Condomínios</div>
+    <div class="header-sub">verificação presencial de campo</div>
+  </div>
+  <div class="progress-wrap">
+    <div class="progress-bar"><div class="progress-fill" id="gfill"></div></div>
+    <span class="progress-label" id="glabel">0%</span>
+  </div>
+</header>
+
+<main>
+  <div class="summary-cards">
+    <div class="scard"><div class="scard-n n-ok" id="cnt-ok">0</div><div class="scard-l">Conformes</div></div>
+    <div class="scard"><div class="scard-n n-nok" id="cnt-nok">0</div><div class="scard-l">Não conformes</div></div>
+    <div class="scard"><div class="scard-n n-na" id="cnt-na">0</div><div class="scard-l">N/A</div></div>
+  </div>
+
+  <div id="sections"></div>
+</main>
+
+<div class="sticky-footer">
+  <button class="btn" onclick="expandAll()">Expandir tudo</button>
+  <button class="btn" onclick="collapseAll()">Recolher</button>
+  <button class="btn btn-danger" onclick="confirmReset()">Reiniciar</button>
+  <button class="btn btn-primary" onclick="openReport()">Ver relatório</button>
+</div>
+
+<div class="report-modal" id="reportModal">
+  <div class="report-box">
+    <div class="report-head">
+      <span class="report-head-title">Relatório de inspeção</span>
+      <button class="report-close" onclick="closeReport()">×</button>
+    </div>
+    <div class="report-body"><pre id="reportText"></pre></div>
+    <div class="report-foot">
+      <button class="btn" style="flex:1" onclick="copyReport()">Copiar texto</button>
+      <button class="btn btn-primary" style="flex:1" onclick="closeReport()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const sections=[
+  {id:"portaria",icon:"🚪",label:"Portaria & Entrada",items:[
+    {t:"Aviso de coleta de dados visível na portaria (quem coleta, para quê, contato do responsável)",hint:"Deve estar fixado em local visível antes da entrada. Verificar se está legível e atualizado."},
+    {t:"Livro/sistema de registro de visitantes com aviso de privacidade",hint:"O campo de coleta de dados do visitante precisa ter uma nota explicando o uso."},
+    {t:"Acesso ao sistema de portaria restrito a pessoas autorizadas (sem senha compartilhada ou login aberto)",hint:"Testar: o sistema abre sem senha? Alguém deixou logado?"},
+    {t:"Interfone ou câmera de entrada com aviso visível de monitoramento",hint:"Plaquinha 'Área monitorada por câmeras' deve ser visível antes de entrar."},
+  ]},
+  {id:"cameras",icon:"📷",label:"Câmeras de CFTV",items:[
+    {t:"Aviso de monitoramento por câmeras fixado em todas as áreas filmadas",hint:"Verificar hall, garagem, salão, academia, elevadores. Cada área filmada precisa de aviso."},
+    {t:"Câmeras não apontam para áreas privadas (apartamentos, vestiários, banheiros)",hint:"Inspecionar ângulo das câmeras fisicamente — não só no monitor."},
+    {t:"Acesso ao sistema de CFTV protegido por senha e restrito ao responsável",hint:"Quem pode ver as imagens? Tem senha? Está logado aberto?"},
+    {t:"Imagens descartadas automaticamente dentro do prazo definido (ex: 30 dias)",hint:"Verificar configuração do sistema ou perguntar ao responsável técnico."},
+    {t:"Registro de quem acessou as gravações (log de acesso)",hint:"O sistema guarda histórico de quem visualizou? Checar com o fornecedor."},
+  ]},
+  {id:"acesso",icon:"🔑",label:"Controle de Acesso (biometria/cartão)",items:[
+    {t:"Aviso visível sobre coleta biométrica no totem/leitor de acesso",hint:"Se coleta digital, foto ou outro dado biométrico: base legal específica é exigida (em geral, consentimento)."},
+    {t:"Consentimento documentado de moradores para uso de biometria",hint:"Checar se há formulário assinado ou aceite digital para cada morador cadastrado."},
+    {t:"Dados biométricos de ex-moradores/ex-funcionários excluídos do sistema",hint:"Perguntar ao responsável: tem processo de exclusão quando alguém sai?"},
+    {t:"Fornecedor do sistema de acesso tem contrato com cláusulas LGPD",hint:"Verificar se existe contrato vigente e se inclui proteção de dados."},
+  ]},
+  {id:"areas",icon:"🏊",label:"Áreas Comuns (academia, salão, piscina)",items:[
+    {t:"Aviso de privacidade ou regulamento com menção à LGPD afixado nas áreas",hint:"Pode ser parte do regulamento interno, desde que mencione tratamento de dados."},
+    {t:"Câmeras nas áreas comuns com aviso visível e ângulo adequado",hint:"Mesma verificação da seção de CFTV, mas especificamente nas áreas de lazer."},
+    {t:"Fichas de reserva de espaço coletam só dados necessários",hint:"Nome e apartamento são suficientes. CPF, telefone completo, etc. precisam de justificativa."},
+  ]},
+  {id:"funcionarios",icon:"👷",label:"Funcionários & Prestadores",items:[
+    {t:"Funcionários sabem o que fazer se alguém pedir exclusão dos dados deles",hint:"Pergunta rápida: 'Se um morador pedir pra apagar os dados dele, o que você faz?'"},
+    {t:"Dados de funcionários (contracheque, férias, saúde) em local de acesso restrito",hint:"Checar onde ficam guardados os documentos de RH — gaveta aberta, pasta compartilhada?"},
+    {t:"Prestadores externos assinaram termo de confidencialidade",hint:"Verificar se há modelo padrão de NDA para prestadores do condomínio."},
+    {t:"Crachás ou identificação visual para prestadores durante permanência no condomínio",hint:"Controle de quem está no prédio — ligado à proteção de dados e segurança."},
+  ]},
+  {id:"digital",icon:"💻",label:"Sistemas & Aplicativos",items:[
+    {t:"App de comunicação do condomínio tem política de privacidade disponível",hint:"Acessar o app e verificar se tem link para política de privacidade."},
+    {t:"Dados de moradores no software de gestão são acessados só por quem precisa",hint:"Quem tem login no sistema? Todos têm acesso ao cadastro completo de moradores?"},
+    {t:"Wi-Fi de áreas comuns não coleta dados sem aviso",hint:"Redes abertas que fazem login com CPF ou e-mail precisam de aviso de coleta."},
+    {t:"Senhas do sistema de gestão são individuais (não uma senha geral compartilhada)",hint:"Testar: existe uma senha tipo '123456' que todos usam?"},
+  ]},
+];
+
+const ans={};
+sections.forEach(s=>s.items.forEach((_,i)=>ans[s.id+i]=null));
+const obsData={};
+
+function setAns(sid,i,val){
+  const key=sid+i;
+  ans[key]= ans[key]===val ? null : val;
+  const v=ans[key];
+  ["ok","nok","na"].forEach(o=>{
+    document.getElementById("opt_"+key+"_"+o).className="opt"+(v===o?" "+o:"");
+  });
+  const obsBtn=document.getElementById("obsbtn_"+key);
+  const obsIn=document.getElementById("obs_"+key);
+  if(v==="nok"){obsBtn.style.display="inline";}
+  else{obsBtn.style.display="none";obsIn.classList.remove("show");}
+  updateStats();
+  updateSection(sid);
+}
+
+function toggleObs(key){
+  document.getElementById("obs_"+key).classList.toggle("show");
+}
+
+function updateSection(sid){
+  const s=sections.find(x=>x.id===sid);
+  const total=s.items.length;
+  const done=s.items.filter((_,i)=>ans[sid+i]!==null).length;
+  const ok=s.items.filter((_,i)=>ans[sid+i]==="ok").length;
+  const pct=Math.round(ok/total*100);
+  document.getElementById("fill_"+sid).style.width=pct+"%";
+  document.getElementById("count_"+sid).textContent=done+"/"+total;
+}
+
+function updateStats(){
+  const vals=Object.values(ans);
+  const ok=vals.filter(v=>v==="ok").length;
+  const nok=vals.filter(v=>v==="nok").length;
+  const na=vals.filter(v=>v==="na").length;
+  const answered=ok+nok+na;
+  const total=vals.length;
+  document.getElementById("cnt-ok").textContent=ok;
+  document.getElementById("cnt-nok").textContent=nok;
+  document.getElementById("cnt-na").textContent=na;
+  const pct=total>0?Math.round(answered/total*100):0;
+  document.getElementById("gfill").style.width=pct+"%";
+  document.getElementById("glabel").textContent=pct+"%";
+}
+
+function toggleSection(sid){
+  const el=document.getElementById("items_"+sid);
+  const ch=document.getElementById("chev_"+sid);
+  const open=el.classList.toggle("open");
+  ch.className="chev"+(open?" open":"");
+}
+
+function expandAll(){sections.forEach(s=>{document.getElementById("items_"+s.id).classList.add("open");document.getElementById("chev_"+s.id).className="chev open";})}
+function collapseAll(){sections.forEach(s=>{document.getElementById("items_"+s.id).classList.remove("open");document.getElementById("chev_"+s.id).className="chev";})}
+
+function confirmReset(){
+  if(confirm("Reiniciar todas as respostas?")){
+    Object.keys(ans).forEach(k=>ans[k]=null);
+    document.querySelectorAll(".opt").forEach(b=>b.className="opt");
+    document.querySelectorAll(".obs-input").forEach(t=>{t.value="";t.classList.remove("show");});
+    document.querySelectorAll(".obs-btn").forEach(b=>b.style.display="none");
+    updateStats();
+    sections.forEach(s=>updateSection(s.id));
+  }
+}
+
+function buildReport(){
+  const now=new Date();
+  const dt=now.toLocaleDateString("pt-BR")+" "+now.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+  const lines=["RELATÓRIO DE INSPEÇÃO LGPD — CONDOMÍNIO","Data: "+dt,"",""];
+  const noks=[];
+  sections.forEach(s=>{
+    lines.push("── "+s.label.toUpperCase()+" ──");
+    s.items.forEach((it,i)=>{
+      const v=ans[s.id+i];
+      const obs=document.getElementById("obs_"+s.id+i)?.value||"";
+      const status=v==="ok"?"✓ Conforme     ":v==="nok"?"✗ Não conforme ":v==="na"?"– N/A          ":"○ Não verificado";
+      lines.push(status+" "+it.t);
+      if(obs) lines.push("               Obs: "+obs);
+      if(v==="nok") noks.push({label:s.label,item:it.t,obs});
+    });
+    lines.push("");
+  });
+  const vals=Object.values(ans);
+  const ok=vals.filter(v=>v==="ok").length;
+  const nok=vals.filter(v=>v==="nok").length;
+  const na=vals.filter(v=>v==="na").length;
+  const pend=vals.filter(v=>v===null).length;
+  lines.push("────────────────────────────────────");
+  lines.push("Conformes:       "+ok);
+  lines.push("Não conformes:   "+nok);
+  lines.push("N/A:             "+na);
+  lines.push("Não verificados: "+pend);
+  lines.push("Total de itens:  "+vals.length);
+  if(noks.length){
+    lines.push("");
+    lines.push("ITENS NÃO CONFORMES:");
+    noks.forEach((n,i)=>{
+      lines.push((i+1)+". ["+n.label+"] "+n.item);
+      if(n.obs) lines.push("   → "+n.obs);
+    });
+  }
+  return lines.join("\n");
+}
+
+function openReport(){
+  document.getElementById("reportText").textContent=buildReport();
+  document.getElementById("reportModal").classList.add("open");
+}
+function closeReport(){document.getElementById("reportModal").classList.remove("open");}
+
+function copyReport(){
+  const text=document.getElementById("reportText").textContent;
+  navigator.clipboard.writeText(text).then(()=>{
+    const btn=event.target;
+    btn.textContent="Copiado!";
+    setTimeout(()=>btn.textContent="Copiar texto",2000);
+  }).catch(()=>{
+    const ta=document.createElement("textarea");
+    ta.value=text;
+    document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);
+    const btn=event.target;
+    btn.textContent="Copiado!";
+    setTimeout(()=>btn.textContent="Copiar texto",2000);
+  });
+}
+
+document.getElementById("reportModal").addEventListener("click",function(e){
+  if(e.target===this) closeReport();
+});
+
+function render(){
+  const cont=document.getElementById("sections");
+  cont.innerHTML="";
+  sections.forEach(s=>{
+    const div=document.createElement("div");
+    div.className="section";
+    div.innerHTML=`
+      <div class="sec-head" onclick="toggleSection('${s.id}')">
+        <span class="sec-icon">${s.icon}</span>
+        <span class="sec-label">${s.label}</span>
+        <div class="sec-mini-bar"><div class="sec-mini-fill" id="fill_${s.id}" style="width:0%"></div></div>
+        <span class="sec-count" id="count_${s.id}">0/${s.items.length}</span>
+        <span class="chev" id="chev_${s.id}">▶</span>
+      </div>
+      <div class="items" id="items_${s.id}">
+        ${s.items.map((it,i)=>`
+          <div class="item">
+            <div class="item-label" id="lbl_${s.id}${i}">${it.t}</div>
+            <div class="item-hint">${it.hint}</div>
+            <div class="opts">
+              <button type="button" class="opt" id="opt_${s.id}${i}_ok" onclick="setAns('${s.id}',${i},'ok')">✓ Conforme</button>
+              <button type="button" class="opt" id="opt_${s.id}${i}_nok" onclick="setAns('${s.id}',${i},'nok')">✗ Não conforme</button>
+              <button type="button" class="opt" id="opt_${s.id}${i}_na" onclick="setAns('${s.id}',${i},'na')">– N/A</button>
+            </div>
+            <button type="button" class="obs-btn" id="obsbtn_${s.id}${i}" style="display:none" onclick="toggleObs('${s.id}${i}')">+ anotar observação</button>
+            <textarea class="obs-input" id="obs_${s.id}${i}" placeholder="Detalhe o problema encontrado..." rows="2"></textarea>
+          </div>
+        `).join("")}
+      </div>`;
+    cont.appendChild(div);
+  });
+}
+
+render();
+</script>
+</body>
+</html>
